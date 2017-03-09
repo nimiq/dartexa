@@ -75,7 +75,8 @@ class DartViewSet(views.APIView):
             return response.Response({'say': say})
 
         # Get the game's latest turn.
-        turn = Turn.objects.filter(game=game).exclude(status='void').order_by('-id').first()
+        # turn = Turn.objects.filter(game=game).exclude(status='v').order_by('-id').first()
+        turn = Turn.objects.filter(game=game).order_by('-id').first()
 
         # There is no turn yet.
         if not turn:
@@ -86,7 +87,7 @@ class DartViewSet(views.APIView):
             )
 
         # If the turn is done: create a new turn for the other player.
-        if turn.status == 'd':
+        if turn.status == 'd' or turn.status == 'v':
             turn = Turn.objects.create(
                 status='p',
                 player=Player.objects.exclude(id=turn.player.id).first(),
@@ -100,23 +101,21 @@ class DartViewSet(views.APIView):
             multiplier=multiplier,
         )
 
-        # Add the dart to the pending turn.
-            # darts123 = [turn.dart1, turn.dart2, turn.dart3]
-            # empty_darts = list(filter(lambda x: not bool(x), darts123))
-            # if not empty_darts:
-            #     say = 'Error: corrupted turn.'
-            #     return response.Response({'say': say})
-            # empty_darts[0] = dart
-            # turn.save()
+        # Count empties.
         empty_dart_count = 0
         if not turn.dart1:
             empty_dart_count += 1
+        if not turn.dart2:
+            empty_dart_count += 1
+        if not turn.dart3:
+            empty_dart_count += 1
+
+        # Add the dart to the pending turn.
+        if not turn.dart1:
             turn.dart1 = dart
         elif not turn.dart2:
-            empty_dart_count += 1
             turn.dart2 = dart
         elif not turn.dart3:
-            empty_dart_count += 1
             turn.dart3 = dart
         turn.save()
         if not empty_dart_count:
