@@ -53,6 +53,9 @@ class GameCancelViewSet(views.APIView):
     def post(self, request):
         # Get all the running game and cancel them.
         amt = Game.objects.filter(status='r').update(status='c')
+        if not amt:
+            say = 'There is no running game, idiot!'.format(amt)
+            return response.Response({'say': say})
         say = '{} game cancelled.'.format(amt)
         return response.Response({'say': say})
 
@@ -66,6 +69,13 @@ class DartViewSet(views.APIView):
         print('Content multiplier: ' + multiplier)
 
         if not score or not multiplier:
+            say = 'Error: input invalid.'
+            return response.Response({'say': say})
+
+        try:
+            score = int(score)
+            multiplier = int(multiplier)
+        except Exception:
             say = 'Error: input invalid.'
             return response.Response({'say': say})
 
@@ -283,3 +293,127 @@ class StatusViewSet(views.APIView):
 
         )
         return response.Response({'say': say})
+
+
+def multiplier_to_string(multiplier):
+    if multiplier == 1:
+        return 'single'
+    if multiplier == 2:
+        return 'double'
+    if multiplier == 3:
+        return 'triple'
+
+
+def get_status_frontend():
+    # Info for the frontend.
+    try:
+        game = Game.objects.get(status='r')
+    except Game.DoesNotExist:
+        error = 'No running game. Create a game first.'
+        return None
+    except Game.MultipleObjectsReturned:
+        error = 'Multiple running games. Cancel the running games first.'
+        return None
+
+    turn = Turn.objects.filter(game=game).order_by('-id').first()
+    if not turn:
+        error = 'No turn yet.'
+        return None
+
+    if turn.status == 'v' or turn.status == 'd':
+        next_player = Player.objects.exclude(id=turn.player.id).first()
+    else:
+        next_player = turn.player
+
+    first_player = Turn.objects.filter(game=game).order_by('id').first().player
+    paolo = Player.objects.get(id=1)
+    rodrigo = Player.objects.get(id=2)
+
+    turns = Turn.objects.filter(game=game).order_by('id')
+    rounds = []
+    for _ in range(10):
+        rounds.append(
+            {
+                "paolo": [
+                    {"score": '-', "multiplier": '-'},
+                    {"score": '-', "multiplier": '-'},
+                    {"score": '-', "multiplier": '-'},
+                ],
+                "rodrigo": [
+                    {"score": '-', "multiplier": '-'},
+                    {"score": '-', "multiplier": '-'},
+                    {"score": '-', "multiplier": '-'},
+                ]
+            }
+
+        )
+
+    i = 0
+    j = 0
+    while j < 10:
+        # Read paolo.
+        try:
+            turn = turns[i]
+        except IndexError:
+            break
+
+        rounds[j]['paolo'] = [
+                {"score": str(turn.dart1.score) if turn.dart1 else '-',
+                 "multiplier": multiplier_to_string(turn.dart1.multiplier) if turn.dart1 else '-'},
+                {"score": str(turn.dart2.score) if turn.dart2 else '-',
+                 "multiplier": multiplier_to_string(turn.dart2.multiplier) if turn.dart2 else '-'},
+                {"score": str(turn.dart3.score) if turn.dart3 else '-',
+                 "multiplier": multiplier_to_string(turn.dart3.multiplier) if turn.dart3 else '-'},
+
+            ]
+
+        # Read Rodrigo.
+        try:
+            turn = turns[i+1]
+        except IndexError:
+            break
+
+        rounds[j]["rodrigo"] = [
+                {"score": str(turn.dart1.score) if turn.dart1 else '-',
+                 "multiplier": multiplier_to_string(turn.dart1.multiplier) if turn.dart1 else '-'},
+                {"score": str(turn.dart2.score) if turn.dart2 else '-',
+                 "multiplier": multiplier_to_string(turn.dart2.multiplier) if turn.dart2 else '-'},
+                {"score": str(turn.dart3.score) if turn.dart3 else '-',
+                 "multiplier": multiplier_to_string(turn.dart3.multiplier) if turn.dart3 else '-'},
+
+            ]
+
+        i += 2
+        j += 1
+
+
+    data = {
+        "next_player": next_player.name.lower(),
+        "first_player": first_player.name.lower(),
+        "paolo_score": paolo.score,
+        "rodrigo_score": rodrigo.score,
+        "round0": rounds[0],
+        "round1": rounds[1],
+        "round2": rounds[2],
+        "round3": rounds[3],
+        "round4": rounds[4],
+        "round5": rounds[5],
+        "round6": rounds[6],
+        "round7": rounds[7],
+        "round8": rounds[8],
+        "round9": rounds[9],
+    }
+    return data
+
+
+def ui(request):
+    return render(
+        request, 'index.html', {'data': get_status_frontend()})
+
+
+def ui_paolo(request):
+    return render(request, 'stats-paolo.html')
+
+
+def ui_rodrigo(request):
+    return render(request, 'stats-rodrigo.html')
