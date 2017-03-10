@@ -8,5 +8,6 @@ urlpatterns = [
     url(r'^game$', views.GameViewSet.as_view(), name='game'),
     url(r'^dart/cancel$', views.DartCancelViewSet.as_view(), name='dart-cancel'),
     url(r'^dart$', views.DartViewSet.as_view(), name='dart'),
+    url(r'^status$', views.StatusViewSet.as_view(), name='status'),
 ]
 

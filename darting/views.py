@@ -13,10 +13,12 @@ def index(request):
 class TestViewSet(views.APIView):
     def get(self, request):
         say = request.query_params.get('q', 'test one two three')
+        print('Content: ' + say)
         return response.Response({'say': say + '. GET.'})
 
     def post(self, request):
         say = request.data.get('q', 'test one two three')
+        print('Content: ' + say)
         return response.Response({'say': say + '. POST.'})
 
 
@@ -60,6 +62,9 @@ class DartViewSet(views.APIView):
         # Input validation.
         score = request.data.get('score')
         multiplier = request.data.get('multiplier')
+        print('Content score: ' + score)
+        print('Content multiplier: ' + multiplier)
+
         if not score or not multiplier:
             say = 'Error: input invalid.'
             return response.Response({'say': say})
@@ -177,6 +182,104 @@ class DartViewSet(views.APIView):
 
 class DartCancelViewSet(views.APIView):
     def post(self, request):
-        pass
+        # Get the running game.
+        try:
+            game = Game.objects.get(status='r')
+        except Game.DoesNotExist:
+            say = 'No running game. Create a game first.'
+            return response.Response({'say': say})
+        except Game.MultipleObjectsReturned:
+            say = 'Multiple running games. Cancel the running games first.'
+            return response.Response({'say': say})
+
+        turn = Turn.objects.filter(game=game).order_by('-id').first()
+        if turn.dart3:
+            orig_dart_score = turn.dart3.score
+            turn.dart3.delete()
+            turn.dart3 = None
+
+            if turn.status == 'v':
+                turn.player.score -= (turn.dart1.score+turn.dart2.score)
+                turn.player.save()
+            elif turn.status == 'p' or turn.status == 'd':
+                turn.player.score += orig_dart_score
+                turn.player.save()
+
+            turn.status = 'p'
+            turn.save()
+
+        elif turn.dart2:
+            orig_dart_score = turn.dart2.score
+            turn.dart2.delete()
+            turn.dart2 = None
+
+            if turn.status == 'v':
+                turn.player.score -= turn.dart1.score
+                turn.player.save()
+            elif turn.status == 'p':
+                turn.player.score += orig_dart_score
+                turn.player.save()
+
+            turn.status = 'p'
+            turn.save()
+
+        elif turn.dart1:
+            orig_dart_score = turn.dart1.score
+            turn.dart1.delete()
+            turn.dart1 = None
+
+            if turn.status == 'p':
+                turn.player.score += orig_dart_score
+                turn.player.save()
+
+            turn.status = 'p'
+            turn.save()
+
+        else:
+            say = 'Error: player {} has no dart yet.'.format(
+                turn.player.name
+            )
+            return response.Response({'say': say})
+
+        say = 'Score {} deleted for player {}.'.format(
+            orig_dart_score, turn.player.name
+        )
+        return response.Response({'say': say})
 
 
+class StatusViewSet(views.APIView):
+    def get(self, request):
+        # Get the running game.
+        try:
+            game = Game.objects.get(status='r')
+        except Game.DoesNotExist:
+            say = 'No running game. Create a game first.'
+            return response.Response({'say': say})
+        except Game.MultipleObjectsReturned:
+            say = 'Multiple running games. Cancel the running games first.'
+            return response.Response({'say': say})
+
+        turn = Turn.objects.filter(game=game).order_by('-id').first()
+
+        if turn.status == 'v' or turn.status == 'd':
+            next_player = Player.objects.exclude(id=turn.player.id).first()
+        else:
+            next_player = turn.player
+
+        dart_number = 1
+        if not turn.dart1:
+            dart_number = 1
+        elif not turn.dart2:
+            dart_number = 2
+        elif not turn.dart3:
+            dart_number = 3
+
+        player1 = Player.objects.get(id=1)
+        player2 = Player.objects.get(id=2)
+        say = '{}: {} to go. {}: {} to go. {} to play his dart number {}.'.format(
+            player1.name, player1.score,
+            player2.name, player2.score,
+            next_player.name, dart_number
+
+        )
+        return response.Response({'say': say})
