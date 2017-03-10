@@ -6,10 +6,6 @@ from rest_framework import viewsets, views, response
 from .models import *
 
 
-def index(request):
-    return HttpResponse("Paolo won!")
-
-
 class TestViewSet(views.APIView):
     def get(self, request):
         say = request.query_params.get('q', 'test one two three')
@@ -32,10 +28,10 @@ class GameViewSet(views.APIView):
         # Create new game.
         game = Game.objects.create()
         player1 = Player.objects.get(pk=1)
-        player1.score = 501
+        player1.score = game.target
         player1.save()
         player2 = Player.objects.get(pk=2)
-        player2.score = 501
+        player2.score = game.target
         player2.save()
         turn = Turn.objects.create(
             status='p',
@@ -155,7 +151,7 @@ class DartViewSet(views.APIView):
             game.save()
             say = '{} won the game!'.format(turn.player.name)
             return response.Response({'say': say})
-        elif turn.player.score > 0:
+        elif turn.player.score > 1:
             if turn.status == 'd':
                 say = '{} to go for {}. Now {} to play.'.format(
                     turn.player.score, turn.player.name,
@@ -358,11 +354,11 @@ def get_status_frontend():
             break
 
         rounds[j]['paolo'] = [
-                {"score": str(turn.dart1.score) if turn.dart1 else '-',
+                {"score": str(turn.dart1.score) if turn.dart1 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart1.multiplier) if turn.dart1 else '-'},
-                {"score": str(turn.dart2.score) if turn.dart2 else '-',
+                {"score": str(turn.dart2.score) if turn.dart2 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart2.multiplier) if turn.dart2 else '-'},
-                {"score": str(turn.dart3.score) if turn.dart3 else '-',
+                {"score": str(turn.dart3.score) if turn.dart3 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart3.multiplier) if turn.dart3 else '-'},
 
             ]
@@ -374,11 +370,11 @@ def get_status_frontend():
             break
 
         rounds[j]["rodrigo"] = [
-                {"score": str(turn.dart1.score) if turn.dart1 else '-',
+                {"score": str(turn.dart1.score) if turn.dart1 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart1.multiplier) if turn.dart1 else '-'},
-                {"score": str(turn.dart2.score) if turn.dart2 else '-',
+                {"score": str(turn.dart2.score) if turn.dart2 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart2.multiplier) if turn.dart2 else '-'},
-                {"score": str(turn.dart3.score) if turn.dart3 else '-',
+                {"score": str(turn.dart3.score) if turn.dart3 and turn.status!='v' else '-',
                  "multiplier": multiplier_to_string(turn.dart3.multiplier) if turn.dart3 else '-'},
 
             ]

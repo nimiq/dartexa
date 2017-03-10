@@ -24,7 +24,7 @@ class GameAdmin(admin.ModelAdmin):
     """
     Simple audit logs belonging to the Toggle
     """
-    list_display = ('pk', 'target', 'status')
+    list_display = ('pk', 'status')
 
 
 @admin.register(Turn)

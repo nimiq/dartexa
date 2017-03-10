@@ -13,7 +13,7 @@ class Dart(models.Model):
 
 class Player(models.Model):
     name = models.CharField(max_length=128)
-    score = models.IntegerField(default=501)
+    score = models.IntegerField(default=51)
 
     def __unicode__(self):
         return '{}|{}'.format(self.name, self.score)
@@ -25,7 +25,7 @@ class Game(models.Model):
         ('f', 'finished'),
         ('c', 'cancelled')
     )
-    target = models.IntegerField(default=501)
+    target = models.IntegerField(default=51)
     status = models.CharField(choices=STATUS_CHOICES, default='r', max_length=1)
 
     def __unicode__(self):
