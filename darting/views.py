@@ -39,8 +39,8 @@ class GameViewSet(views.APIView):
             game=game
         )
 
-        say = 'Game {} started. {} to play first. {} to go.'.format(
-            game.pk, player1.name, player1.score
+        say = 'Game {} started. {} to play first. {} to go. Good luck {}!'.format(
+            game.pk, player1.name, player1.score, player1.name
         )
         return response.Response({'say': say})
 
@@ -52,7 +52,7 @@ class GameCancelViewSet(views.APIView):
         if not amt:
             say = 'There is no running game, idiot!'.format(amt)
             return response.Response({'say': say})
-        say = '{} game cancelled.'.format(amt)
+        say = '{} game cancelled. Why did you do that?'.format(amt)
         return response.Response({'say': say})
 
 
@@ -79,7 +79,7 @@ class DartViewSet(views.APIView):
         try:
             game = Game.objects.get(status='r')
         except Game.DoesNotExist:
-            say = 'No running game. Create a game first.'
+            say = 'No running game. Create a game first, idiot!'
             return response.Response({'say': say})
         except Game.MultipleObjectsReturned:
             say = 'Multiple running games. Cancel the running games first.'
@@ -142,6 +142,12 @@ class DartViewSet(views.APIView):
         turn.player.score -= dart.score
         turn.player.save()
 
+        say = ''
+        if score <= 5:
+            say += '{}, seriously?? Amateur!!'.format(score)
+        if multiplier == 3:
+            say += 'A triple? Now you are playing my friend. '
+
         # Check for victory.
         # If the player won.
         if turn.player.score == 0 and dart.multiplier == 2:
@@ -149,19 +155,22 @@ class DartViewSet(views.APIView):
             turn.save()
             game.status = 'f'
             game.save()
-            say = '{} won the game!'.format(turn.player.name)
+            say += '{} won the game! You are the best!'.format(turn.player.name)
             return response.Response({'say': say})
         elif turn.player.score > 1:
             if turn.status == 'd':
-                say = '{} to go for {}. Now {} to play.'.format(
+                next_player = Player.objects.exclude(id=turn.player.id).first()
+                say += '{} to go for {}. Now {} to play with {} remaining.  Go {} go!'.format(
                     turn.player.score, turn.player.name,
-                    Player.objects.exclude(id=turn.player.id).first().name,
+                    next_player.name,
+                    next_player.score,
+                    next_player.name
                 )
                 return response.Response({'say': say})
             elif turn.status == 'p':
                 darts123 = [turn.dart1, turn.dart2, turn.dart3]
                 empty_darts = list(filter(lambda x: not bool(x), darts123))
-                say = '{} to go for {}. It will be your dart number {}.'.format(
+                say += '{} to go for {}. It will be your dart number {}.'.format(
                     turn.player.score, turn.player.name,
                     4-len(empty_darts),
                 )
@@ -179,7 +188,7 @@ class DartViewSet(views.APIView):
             turn.player.score += total
             turn.player.save()
 
-            say = 'Too bad {}: you voided your turn! Now {} to play.'.format(
+            say += 'Too bad {}: you voided your turn! Now {} to play.'.format(
                 turn.player.name,
                 Player.objects.exclude(id=turn.player.id).first().name,
             )
@@ -259,7 +268,7 @@ class StatusViewSet(views.APIView):
         try:
             game = Game.objects.get(status='r')
         except Game.DoesNotExist:
-            say = 'No running game. Create a game first.'
+            say = 'No running game. Create a game first, idiot!'
             return response.Response({'say': say})
         except Game.MultipleObjectsReturned:
             say = 'Multiple running games. Cancel the running games first.'
